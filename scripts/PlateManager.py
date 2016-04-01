@@ -1,27 +1,22 @@
 #python
 
-import modo
-import lx
 from collections import namedtuple
-
 from utils.Helpers import UserValue
 
-scene = modo.Scene()
-renderItem = scene.items(itype=lx.symbol.sITYPE_RENDER)[0]
+# modo
+import modo
+import lx
+
 
 def get_backdrop(camera):
     for clip in scene.items(itype = lx.symbol.sITYPE_VIDEOSEQUENCE):
-        # todo: what if more than one camera has that clip assigned?
         for cam in clip.itemGraph('shadeLoc').reverse():
             if cam == camera:
                 file_path = clip.channel('pattern').get()
                 first_fame = clip.channel(lx.symbol.sICHAN_VIDEOSEQUENCE_FIRSTFRAME).get()
                 last_frame = clip.channel(lx.symbol.sICHAN_VIDEOSEQUENCE_LASTFRAME).get()        
-    
                 return {'range':(first_fame, last_frame), 'filePath':file_path, 'clipObj':clip}
-        else:
-            return None
-
+        
 def get_render_cam(renderItem):
     return renderItem.itemGraph('shadeLoc').forward(0)
 
@@ -30,6 +25,7 @@ def set_range_from_clip():
     clip = get_backdrop(get_render_cam(renderItem))
     if clip:
         scene.sceneRange = clip['range']
+        scene.currentRange = clip['range']
         renderItem.channel(lx.symbol.sICHAN_POLYRENDER_FIRST).set(clip['range'][0])
         renderItem.channel(lx.symbol.sICHAN_POLYRENDER_LAST).set(clip['range'][1])
 
@@ -71,20 +67,35 @@ def enable_backdrop(camera):
 # Commands
 arg = lx.args()[0]
 if arg == 'setRange':
+    scene = modo.Scene()
+    renderItem = scene.items(itype=lx.symbol.sITYPE_RENDER)[0]
     set_range_from_clip()
     
 if arg == 'disableBackdrop':
+    scene = modo.Scene()
     selected_cameras = scene.selectedByType(modo.c.CAMERA_TYPE)
+
+    # disable the backdrop
+    # if no camera is selected the current render cam is used
     if len(selected_cameras) == 0:
-        modo.dialogs.alert('Plate Manager', 'Please select one or more cameras')
+        renderItem = scene.items(itype=lx.symbol.sITYPE_RENDER)[0]
+        render_cam = modo.Item(get_render_cam(renderItem))        
+        render_cam = modo.Item(get_render_cam(renderItem))
+        disable_backdrop(render_cam)
     else:
         for camera in selected_cameras:
             disable_backdrop(camera)
 
 if arg == 'enableBackdrop':
+    scene = modo.Scene()
     selected_cameras = scene.selectedByType(modo.c.CAMERA_TYPE)
+
+    # enable the backdrop
+    # if no camera is selected the current render cam is used
     if len(selected_cameras) == 0:
-        modo.dialogs.alert('Plate Manager', 'Please select one or more cameras')
+        renderItem = scene.items(itype=lx.symbol.sITYPE_RENDER)[0]
+        render_cam = modo.Item(get_render_cam(renderItem))
+        enable_backdrop(render_cam)
     else:
         for camera in selected_cameras:
             enable_backdrop(camera)
