@@ -2,11 +2,16 @@
 
 from collections import namedtuple
 from utils.Helpers import UserValue
+from utils.Helpers import create_proxy
 
 # modo
 import modo
 import lx
 
+
+# Global objects
+scene = modo.Scene()
+renderItem = scene.items(itype=lx.symbol.sITYPE_RENDER)[0]
 
 def get_backdrop(camera):
     for clip in scene.items(itype = lx.symbol.sITYPE_VIDEOSEQUENCE):
@@ -19,7 +24,7 @@ def get_backdrop(camera):
                 return {'range':(first_fame, last_frame), 'filePath':file_path, 'clipObj':clip}
         
 # Modo commands
-def set_range_from_clip():
+def set_range_from_clip(renderItem):
     clip = get_backdrop(scene.renderCamera)
     if clip:
         scene.sceneRange = clip['range']
@@ -66,32 +71,31 @@ def enable_backdrop(camera):
 # Commands
 arg = lx.args()[0]
 if arg == 'setRange':
-    scene = modo.Scene()
-    renderItem = scene.items(itype=lx.symbol.sITYPE_RENDER)[0]
-    set_range_from_clip()
+    set_range_from_clip(renderItem)
     
 if arg == 'disableBackdrop':
-    scene = modo.Scene()
     selected_cameras = scene.selectedByType(modo.c.CAMERA_TYPE)
 
     # disable the backdrop
     # if no camera is selected the current render cam is used
     if len(selected_cameras) == 0:
-        renderItem = scene.items(itype=lx.symbol.sITYPE_RENDER)[0]      
         disable_backdrop(scene.renderCamera)
     else:
         for camera in selected_cameras:
             disable_backdrop(camera)
 
 if arg == 'enableBackdrop':
-    scene = modo.Scene()
     selected_cameras = scene.selectedByType(modo.c.CAMERA_TYPE)
 
     # enable the backdrop
     # if no camera is selected the current render cam is used
-    if len(selected_cameras) == 0:
-        renderItem = scene.items(itype=lx.symbol.sITYPE_RENDER)[0]
+    if selected_cameras:
         enable_backdrop(scene.renderCamera)
     else:
         for camera in selected_cameras:
             enable_backdrop(camera)
+
+if arg == 'createProxy':
+    selection = scene.selected()
+    
+    
