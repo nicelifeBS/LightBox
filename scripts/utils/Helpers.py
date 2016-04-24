@@ -1,4 +1,7 @@
-#import lx
+try:
+    import lx
+except ImportError:
+    pass
 
 
 class UserValue(object):
@@ -39,9 +42,18 @@ class UserValue(object):
     
 def create_proxy(img_path, size=50, file_type=None, force=False):
     '''
-    :param image_path:
-    :param size:
-    :param force: If true writes files into existing output directory
+    Resize an image sequence. Supported output image formats are EXR, TGA, PNG, JPG
+    
+    The image conversion is done with oiiotool
+    
+    :param image_path: modo image file path
+    :type image_path: str
+    :param size: Resize factor in percent
+    :type size: int
+    :param force: If true writes files into existing output directory and overwrite existing files
+    :type force: bool
+    :return: target directory
+    :rtype: str
     '''
     
     from subprocess import Popen
@@ -50,6 +62,11 @@ def create_proxy(img_path, size=50, file_type=None, force=False):
     import shutil
     import time
     import sys
+    
+    # Absolute file path of Lightbox
+    FileService = lx.service.File()
+    oiiotool = FileService.ToLocalAlias('kit_LightBox:')
+    oiiotool = path.join(oiiotool, 'scripts', 'utils', 'oiiotool')
     
     file_types = ['EXR', 'TGA', 'PNG', 'JPG']
     
@@ -77,7 +94,7 @@ def create_proxy(img_path, size=50, file_type=None, force=False):
     else:
         export_name = name
             
-    cmd = ['./oiiotool', path.join(dir_, name), '--resize', '%s%%' % size, '-o', path.join(target_dir, export_name)]
+    cmd = [oiiotool, path.join(dir_, name), '--resize', '%s%%' % size, '-o', path.join(target_dir, export_name)]
     print ' '.join(cmd)
 
     try:
@@ -90,18 +107,84 @@ def create_proxy(img_path, size=50, file_type=None, force=False):
         else:
             return None
     
-    print 'Writing proxys #',
     process = Popen(cmd)
+    process.communicate()
     
-    while process.poll() != 0:
-        sys.stdout.write('.')
-        time.sleep(1)
+    print 'Proxys created: %s' % path.join(target_dir, export_name)
+    return target_dir
+
+def create_video(file_path):
+    """
+    -f image2 -i "/Users/bjoern_siegert/Projects_local/TrollBridge/shots/TB_00610/render/v01/TB_00610_lighting_v01_Final Color Output%*.png" -crf 5 -c:v h264 -r 25 -vf scale=1280:-2 -pix_fmt yuv420p test.mov
+    """
+    
+    import os
+    import subprocess
+    
+    # Absolute file path of Lightbox
+    try:
+        FileService = lx.service.File()
+    except:
+        ffmpegtool = './ffmpeg'
     else:
-        print '#'
-        print 'Proxys created: %s' % path.join(target_dir, export_name)
-        return target_dir
+        ffmpegtool = FileService.ToLocalAlias('kit_LightBox:')
+        ffmpegtool = os.path.join(ffmpegtool, 'scripts', 'utils', 'ffmpeg')    
     
+    # create output file name
+    # we need remove the wildcard and change the file format
+    fn = os.path.basename(file_path)
+    fn = fn.replace('%*', '')
+    fn = os.path.splitext(fn)[0] + '.mov'
+    # the output dir is one level up of the source
+    output_dir = os.path.dirname(os.path.dirname(file_path))
+    
+    fn = os.path.join(output_dir, fn)
+    
+    cmd = [ffmpegtool, '-f', 'image2',
+           '-i', '%s' % file_path, 
+           '-crf', '5', 
+           '-c:v', 'h264', 
+           '-r', '25', 
+           '-vf', 'scale=1280:-2',
+           '-pix_fmt', 'yuv420p',
+           '%s' % fn]
+    log = subprocess.check_output(cmd)
+    print log
+
+def _find_files(file_path, wildcard='%*'):
+    """
+    Find frame pattern in files in a given file path. The number pattern gets replaced and can be specified.
+    
+    :param file_path: file path
+    :param wildcard: wildcard which replaces the number pattern in the files
+    :type file_path: string
+    :type wildcard: string
+    :return: file paths
+    :rtype: list
+    """
+    
+    import re
+    import os
+    
+    data = []
+    for fn in os.listdir(file_path):
+        find = re.search('(.*?)(\d+)\.', fn)
+        try:
+            pattern = find.groups()[1]
+        except:
+            continue
+        else:
+            fn_new = fn.replace(pattern, wildcard)
+            fn_new = os.path.join(file_path, fn_new)
+            if fn_new not in data:
+                data.append(fn_new)
+    
+    return data
+        
+
 if __name__ == '__main__':
     # quick test
-    f = '/Users/bjoern_siegert/Projects_local/TrollBridge/shots/TB_00560/plate/TB_00560_Plate_TGA_UNDISTORTED/TB_00560_#.tga'
-    create_proxy(f, force=True, file_type='JPG')
+    #f = '/Users/bjoern_siegert/Projects_local/TrollBridge/shots/TB_00610/plate/TB_00610_Plate_TGA_UNDISTORTED/TB_00610_#.tga'
+    #create_proxy(f, force=True, file_type='JPG')
+    f = '/Users/bjoern_siegert/Projects_local/TrollBridge/shots/TB_00830/render/v02/TB_00830_lighting_v02_Final Color Output%*.png'
+    create_video(f)

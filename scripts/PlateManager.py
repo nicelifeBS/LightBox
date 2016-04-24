@@ -2,7 +2,7 @@
 
 from collections import namedtuple
 from utils.Helpers import UserValue
-from utils.Helpers import create_proxy
+from utils.Helpers import create_proxy, _find_files, create_video
 
 # modo
 import modo
@@ -96,6 +96,25 @@ if arg == 'enableBackdrop':
             enable_backdrop(camera)
 
 if arg == 'createProxy':
-    selection = scene.selected()
+    files = scene.selectedByType(lx.symbol.sITYPE_VIDEOSEQUENCE)
     
+    # If there is nothing selected we promt a file browser for the user
+    # to set a directory for the files for us
+    if not files:
+        file_path = modo.dialogs.dirBrowse('Image Sequence Path', path=None)
+        files = _find_files(file_path, wildcard='#')
     
+    status = modo.dialogs.okCancel('Creating Proxies', 'Creating proxies for following files:\n%s' % '\n'.join(files))
+
+    if status == 'ok':
+        for fp in files:
+            create_proxy(fp, file_type='JPG', force=True)
+    
+if arg == 'createShotsub':
+        file_path = modo.dialogs.dirBrowse('Image Sequence Path', path=None)
+        files = _find_files(file_path)
+        
+        status = modo.dialogs.okCancel('Creating Shotsub', 'Creating Shotssub(s) for:\n%s' % '\n'.join(files))
+        if status == 'ok':
+            for f in files:
+                create_video(f)
