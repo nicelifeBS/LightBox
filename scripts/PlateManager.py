@@ -12,6 +12,7 @@ import lx
 # Global objects
 scene = modo.Scene()
 renderItem = scene.items(itype=lx.symbol.sITYPE_RENDER)[0]
+filename = scene.filename # scene file path
 
 def get_backdrop(camera):
     for clip in scene.items(itype = lx.symbol.sITYPE_VIDEOSEQUENCE):
@@ -48,8 +49,7 @@ def disable_backdrop(camera):
         backdrop = None
     else:
         # Save the backdrop id to the user value
-        if current_backdrop != backdrop.id:
-            camUserVal.set(backdrop.id)
+        camera.setTag('LBBD', str(backdrop.id))
         
         # remove the back drop from the camera
         backdrop.itemGraph('shadeLoc').disconnectInput(camera)
@@ -60,13 +60,20 @@ def enable_backdrop(camera):
     """
     
     camUserVal = UserValue(camera.id, prefix='PlateManager')
-    backdrop_id = camUserVal.value
     try:
-        backdrop = modo.Item(backdrop_id)
+        backdrop = modo.Item(camera.getTags()['LBBD'])
     except LookupError as e:
-        print 'No Backdrop found with id: %s' % backdrop_id
+        print 'No Backdrop found for camera: %s' % camera.id
     else:
         backdrop.itemGraph('shadeLoc').connectInput(camera)
+
+def set_renderCam(camera, renderItem):
+    """
+    Set render camera and adjust frame range if camera has a clip attached
+    """
+    lx.eval('render.camera %s' % camera.id)
+    set_range_from_clip(renderItem)
+    
     
 # Commands
 arg = lx.args()[0]
@@ -101,20 +108,31 @@ if arg == 'createProxy':
     # If there is nothing selected we promt a file browser for the user
     # to set a directory for the files for us
     if not files:
-        file_path = modo.dialogs.dirBrowse('Image Sequence Path', path=None)
-        files = _find_files(file_path, wildcard='#')
+        try:
+            file_path = modo.dialogs.dirBrowse('Image Sequence Path', path=filename)
+        except:
+            print 'Abort'
+        else:        
+            files = _find_files(file_path, wildcard='#')
     
     status = modo.dialogs.okCancel('Creating Proxies', 'Creating proxies for following files:\n%s' % '\n'.join(files))
-
     if status == 'ok':
         for fp in files:
             create_proxy(fp, file_type='JPG', force=True)
     
 if arg == 'createShotsub':
-        file_path = modo.dialogs.dirBrowse('Image Sequence Path', path=None)
-        files = _find_files(file_path)
-        
+    try:
+        file_path = modo.dialogs.dirBrowse('Image Sequence Path', path=filename)
+    except:
+        print 'Abort'
+    else:
+        files = _find_files(file_path)        
         status = modo.dialogs.okCancel('Creating Shotsub', 'Creating Shotssub(s) for:\n%s' % '\n'.join(files))
         if status == 'ok':
             for f in files:
                 create_video(f)
+
+if arg == 'setRenderCamera':
+    camera = scene.selectedByType(modo.constants.CAMERA_TYPE)[0]
+    if camera:
+        set_renderCam(camera, renderItem)

@@ -1,3 +1,5 @@
+#python
+
 try:
     import lx
 except ImportError:
@@ -115,13 +117,15 @@ def create_proxy(img_path, size=50, file_type=None, force=False):
 
 def create_video(file_path):
     """
-    -f image2 -i "/Users/bjoern_siegert/Projects_local/TrollBridge/shots/TB_00610/render/v01/TB_00610_lighting_v01_Final Color Output%*.png" -crf 5 -c:v h264 -r 25 -vf scale=1280:-2 -pix_fmt yuv420p test.mov
+    ffmpeg -f image2 -i -pattern_type glob
+    "/path/to/image/image_name%4d.png" -crf 5 -c:v h264 -r 25 -vf scale=1280:-2 -pix_fmt yuv420p test.mov
     """
     
     import os
+    import re
     import subprocess
     
-    # Absolute file path of Lightbox
+    # Absolute file path of Lightbox to find the ffmpeg binary
     try:
         FileService = lx.service.File()
     except:
@@ -133,14 +137,23 @@ def create_video(file_path):
     # create output file name
     # we need remove the wildcard and change the file format
     fn = os.path.basename(file_path)
-    fn = fn.replace('%*', '')
+    try:
+        wildcard = re.search('(\%\d+d)', fn).group(0)
+    except:
+        print 'Could find padded number wildcard in "%s"' % fn
+        return 0
+    else:
+        fn = fn.replace(wildcard, '')
+        file_path = file_path.replace(wildcard, '*') # replace the wildcard because we use glob pattern
+        
     fn = os.path.splitext(fn)[0] + '.mov'
     # the output dir is one level up of the source
     output_dir = os.path.dirname(os.path.dirname(file_path))
-    
     fn = os.path.join(output_dir, fn)
     
     cmd = [ffmpegtool, '-f', 'image2',
+           '-y', # overwrite output files without asking
+           '-pattern_type', 'glob',
            '-i', '%s' % file_path, 
            '-crf', '5', 
            '-c:v', 'h264', 
@@ -148,10 +161,11 @@ def create_video(file_path):
            '-vf', 'scale=1280:-2',
            '-pix_fmt', 'yuv420p',
            '%s' % fn]
+    print ' '.join(cmd)
     log = subprocess.check_output(cmd)
     print log
 
-def _find_files(file_path, wildcard='%*'):
+def _find_files(file_path, wildcard=None):
     """
     Find frame pattern in files in a given file path. The number pattern gets replaced and can be specified.
     
@@ -174,6 +188,7 @@ def _find_files(file_path, wildcard='%*'):
         except:
             continue
         else:
+            wildcard = '%%0%sd' % len(pattern) if not wildcard else wildcard
             fn_new = fn.replace(pattern, wildcard)
             fn_new = os.path.join(file_path, fn_new)
             if fn_new not in data:
@@ -186,5 +201,8 @@ if __name__ == '__main__':
     # quick test
     #f = '/Users/bjoern_siegert/Projects_local/TrollBridge/shots/TB_00610/plate/TB_00610_Plate_TGA_UNDISTORTED/TB_00610_#.tga'
     #create_proxy(f, force=True, file_type='JPG')
-    f = '/Users/bjoern_siegert/Projects_local/TrollBridge/shots/TB_00830/render/v02/TB_00830_lighting_v02_Final Color Output%*.png'
-    create_video(f)
+    #f = '/Users/bjoern_siegert/Projects_local/TrollBridge/shots/TB_00830/render/v02/TB_00830_lighting_v02_Final Color Output%*.png'
+    #create_video(f)
+    #fps = _find_files('/Users/bjoern_siegert/Projects_local/TrollBridge/shots/TB_00830/render/v02/')
+    #create_video(fps[0])
+    pass
