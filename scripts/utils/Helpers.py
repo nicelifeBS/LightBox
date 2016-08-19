@@ -181,15 +181,16 @@ def _find_files(file_path, wildcard=None):
     import os
     
     data = []
+    regex = re.compile('(.*\D)(\d+)(\..*)')
     for fn in os.listdir(file_path):
-        find = re.search('(.*?)(\d+)\.', fn)
+        find = regex.search(fn)
         try:
             pattern = find.groups()[1]
         except:
             continue
         else:
             wildcard = '%%0%sd' % len(pattern) if not wildcard else wildcard
-            fn_new = fn.replace(pattern, wildcard)
+            fn_new = regex.sub('\g<1>%s\g<3>' % wildcard, fn)
             fn_new = os.path.join(file_path, fn_new)
             if fn_new not in data:
                 data.append(fn_new)
@@ -205,4 +206,6 @@ if __name__ == '__main__':
     #create_video(f)
     #fps = _find_files('/Users/bjoern_siegert/Projects_local/TrollBridge/shots/TB_00830/render/v02/')
     #create_video(fps[0])
+    #file_path = '/Users/bjoern_siegert/Projects_local/TrollBridge/shots/TB_00630/render/v01/'
+    #print _find_files(file_path)
     pass

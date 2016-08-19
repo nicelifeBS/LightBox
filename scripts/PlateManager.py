@@ -8,7 +8,6 @@ from utils.Helpers import create_proxy, _find_files, create_video
 import modo
 import lx
 
-
 # Global objects
 scene = modo.Scene()
 renderItem = scene.items(itype=lx.symbol.sITYPE_RENDER)[0]
@@ -129,7 +128,9 @@ if arg == 'createShotsub':
         files = _find_files(file_path)        
         status = modo.dialogs.okCancel('Creating Shotsub', 'Creating Shotssub(s) for:\n%s' % '\n'.join(files))
         if status == 'ok':
+            m = lx.Monitor(len(files))
             for f in files:
+                m.step(1)
                 create_video(f)
 
 if arg == 'setRenderCamera':
