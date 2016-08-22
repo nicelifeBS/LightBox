@@ -5,7 +5,6 @@ try:
 except ImportError:
     pass
 
-
 class UserValue(object):
     '''
     Helper Class for user values. Creates an user value with init.
