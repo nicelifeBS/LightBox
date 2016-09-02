@@ -3,7 +3,6 @@
 import modo
 import lx
 import os
-import time
 
 render_item = modo.scene.current().renderItem
 scene = modo.Scene()
@@ -69,33 +68,3 @@ if arg == 'xframes':
         lx.out('Abort')
     else:    
         render(file_path, frames)
-
-if arg == 'prevTest':
-
-    # LightboxRenderPrev testing
-
-    # create the middle frame and sort and
-    # delete duplicates in frame list
-    frameRange = range(first, last + 1)
-    middle = frameRange[len(frameRange) / 2]
-    frames = sorted(list(set([first, middle, last])))
-    try:
-        file_path = modo.dialogs.fileSave('image', 'png', title='Save Render', path=None)
-    except:
-        lx.out('Abort')
-    else:
-        timeout = 3000 # milliseconds
-        #mon = lx.Monitor()
-        file_name = os.path.splitext(file_path)
-        # get current frame
-        current_frame = lx.eval('select.time ?')
-        # convert frames in seconds for modo
-        for f in frames:
-            #mon.init(timeout / 1000)
-            t = f / scene.fps
-            #lx.out('frame: %s, time: %s sec' % (f, t))
-            current_name = file_name[0] + '.%04d.' % f + file_name[1]
-            lx.eval('lightbox.renderprev %s 1000 500 %i %f' % (current_name, timeout, t))
-            #for i in xrange(0, timeout/1000):
-            #    time.sleep(1)
-            #    mon.step()
